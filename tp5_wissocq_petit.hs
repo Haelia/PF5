@@ -13,13 +13,29 @@ data Litteral = Entier Integer
               deriving (Show,Eq)
               
 espacesP :: Parser ()
-espacesP = (zeroOuPlus (car ' ')) >>= \_ -> return ()
+espacesP = (zeroOuPlus (car ' ')) >>= \_ ->
+           return ()
+
+espacesP' :: Parser ()
+espacesP' = do zeroOuPlus (car ' ')
+               return ()
 
 nomP :: Parser Nom
-nomP = unOuPlus (carCond (flip elem ['a'..'z'])) >>= \s -> espacesP >>= \_ -> return s
+nomP = unOuPlus (carCond (flip elem ['a'..'z'])) >>= \s ->
+       espacesP >>= \_ -> return s
+
+nomP' :: Parser Nom
+nomP' = do s <- unOuPlus (carCond (flip elem ['a'..'z']))
+           espacesP' 
+           return s
 
 varP :: Parser Expression
-varP = nomP >>= \n -> return (Var n)
+varP = nomP >>= \n -> 
+       return (Var n)
+
+varP' :: Parser Expression
+varP' = do n <- nomP'  
+           return (Var n)
 
 applique :: [Expression] -> Expression
 applique = foldl1 (\x xs -> App x xs)
@@ -27,8 +43,16 @@ applique = foldl1 (\x xs -> App x xs)
 exprP :: Parser Expression
 exprP = exprParentheseeP ||| lambdaP ||| nombreP ||| booleenP ||| varP
 
+exprP' :: Parser Expression
+exprP' = exprParentheseeP' ||| lambdaP' ||| nombreP' ||| booleenP' ||| varP'
+
 exprsP :: Parser Expression
-exprsP = unOuPlus exprP >>= \s -> return (applique s)
+exprsP = unOuPlus exprP >>= \s -> 
+         return (applique s)   
+
+exprsP' :: Parser Expression
+exprsP' = do s <- unOuPlus exprP'
+             return (applique s)   
 
 lambdaP :: Parser Expression
 lambdaP = car '\\' >>= \_ ->
@@ -40,17 +64,41 @@ lambdaP = car '\\' >>= \_ ->
           espacesP >>= \_ ->
           exprsP >>= \e ->
           return (Lam v e)
+
+lambdaP' :: Parser Expression
+lambdaP' = do car '\\'
+              espacesP' 
+              v <- nomP'
+              espacesP'
+              car '-'
+              car '>'
+              espacesP' 
+              e <- exprsP'
+              return (Lam v e)
           
 exprParentheseeP :: Parser Expression
 exprParentheseeP = car '(' >>= \_ ->
+                   espacesP >>= \_ ->
                    exprsP >>= \e ->
                    car ')' >>= \_ ->
                    return e
-                   
+
+exprParentheseeP' :: Parser Expression
+exprParentheseeP' = do car '('
+                       espacesP'
+                       e <- exprsP'
+                       car ')'
+                       return e    
+
 nombreP :: Parser Expression
 nombreP = unOuPlus (carCond (flip elem ['0' .. '9'])) >>= \c ->
           espacesP >>= \_ -> 
           return (Lit (Entier (read c)))
+
+nombreP' :: Parser Expression
+nombreP' = do c <- unOuPlus (carCond (flip elem ['0' .. '9']))
+              espacesP'
+              return (Lit (Entier (read c)))
           
 booleenP :: Parser Expression
 booleenP = unOuPlus (carCond (' '/=))  >>= \b -> 
@@ -60,8 +108,22 @@ booleenP = unOuPlus (carCond (' '/=))  >>= \b ->
            else if (b == "False")
                 then return (Lit (Bool False))
                 else echoue 
-                         
+
+booleenP' :: Parser Expression
+booleenP' = do b  <- unOuPlus (carCond (' '/=))
+               espacesP'
+               if (b == "True")
+               then return (Lit (Bool True))
+               else if (b == "False")
+                    then return (Lit (Bool False))
+                    else echoue 
+
 expressionP :: Parser Expression
 expressionP = espacesP >>= \_ ->
               exprsP >>= \e ->
               return e
+
+expressionP' :: Parser Expression
+expressionP' = do espacesP'
+                  e <- exprsP'
+                  return e
