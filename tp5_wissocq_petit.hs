@@ -1,4 +1,5 @@
 import Parser
+import Data.Maybe
 
 type Nom = String
 
@@ -11,7 +12,8 @@ data Expression = Lam Nom Expression
 data Litteral = Entier Integer
               | Bool   Bool
               deriving (Show,Eq)
-              
+
+--Parser              
 espacesP :: Parser ()
 espacesP = (zeroOuPlus (car ' ')) >>= \_ ->
            return ()
@@ -81,6 +83,7 @@ exprParentheseeP = car '(' >>= \_ ->
                    espacesP >>= \_ ->
                    exprsP >>= \e ->
                    car ')' >>= \_ ->
+	  	   espacesP >>= \_ ->
                    return e
 
 exprParentheseeP' :: Parser Expression
@@ -88,6 +91,7 @@ exprParentheseeP' = do car '('
                        espacesP'
                        e <- exprsP'
                        car ')'
+		       espacesP'
                        return e    
 
 nombreP :: Parser Expression
@@ -127,3 +131,28 @@ expressionP' :: Parser Expression
 expressionP' = do espacesP'
                   e <- exprsP'
                   return e
+
+ras :: String -> Expression
+ras s = if ((isNothing res) || (snd (fromJust res) /= ""))
+	then error "Erreur d'analyse syntaxique"
+	else fst (fromJust res)
+	where res = parse expressionP s 
+
+--Interprète
+
+data ValeurA = VLitteralA Litteral
+             | VFonctionA (ValeurA -> ValeurA)
+
+instance Show ValeurA where
+    show (VFonctionA _) = "λ"
+                       -- ^ ou "VFonctionA _", ou "<fun>" ou toute
+                       --   autre représentation des fonctions
+    show (VLitteralA  a) = show a 
+
+type Environnement a = [(Nom, a)]
+
+interpreteA :: Environnement ValeurA -> Expression -> ValeurA
+interpreteA _ (Lit x)          = VLitteralA x
+interpreteA env (Var x)        = fromJust (lookup x env) 
+--interpreteA env (Lam nom expr) = interpreteA  (env:(nom,VFonctionA())) 
+interpreteA env (App x y)
