@@ -147,12 +147,40 @@ instance Show ValeurA where
     show (VFonctionA _) = "λ"
                        -- ^ ou "VFonctionA _", ou "<fun>" ou toute
                        --   autre représentation des fonctions
-    show (VLitteralA  a) = show a 
+    show (VLitteralA (Entier i)) = show i
+    show (VLitteralA (Bool b)) = show b
 
 type Environnement a = [(Nom, a)]
+
 
 interpreteA :: Environnement ValeurA -> Expression -> ValeurA
 interpreteA _ (Lit x)          = VLitteralA x
 interpreteA env (Var x)        = fromJust (lookup x env) 
---interpreteA env (Lam nom expr) = interpreteA  (env:(nom,VFonctionA())) 
-interpreteA env (App x y)
+interpreteA env (Lam nom expr) = VFonctionA (\v -> interpreteA ((nom,v):env) expr)
+interpreteA env (App e1 e2)    = f v2
+                                where VFonctionA f = interpreteA env e1
+                                      v2 = interpreteA env e2
+                                      
+negA :: ValeurA
+negA = VFonctionA (\(VLitteralA (Entier x)) -> (VLitteralA (Entier (-x))))
+
+addA :: ValeurA
+addA = VFonctionA (\(VLitteralA (Entier x)) -> (VFonctionA (\(VLitteralA (Entier y)) -> (VLitteralA (Entier (x+y))))))
+ interpreteA envA (ras "if True 1")
+releveBinOpEntierA :: (Integer -> Integer -> Integer) -> ValeurA
+releveBinOpEntierA = \f -> (VFonctionA (\(VLitteralA (Entier x)) -> (VFonctionA (\(VLitteralA (Entier y)) -> (VLitteralA (Entier (x `f` y)))))))
+
+envA :: Environnement ValeurA
+envA = [ ("neg",   negA)
+       , ("add",   releveBinOpEntierA (+))
+       , ("soust", releveBinOpEntierA (-))
+       , ("mult",  releveBinOpEntierA (*))
+       , ("quot",  releveBinOpEntierA quot)
+       , ("if" , ifthenelseA) ]
+       
+ifthenelseA :: ValeurA
+ifthenelseA = VFonctionA (\(VLitteralA (Bool b)) -> VFonctionA (\(VLitteralA x )-> VFonctionA (\(VLitteralA y) -> VLitteralA (if b
+                                                                                                                              then x
+                                                                                                                              else y))))
+                                                                                                                              
+-- voir fonction forever                                                                                                                           
